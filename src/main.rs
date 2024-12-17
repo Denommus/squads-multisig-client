@@ -5,16 +5,13 @@ use anchor_client::{
     Client, Cluster, Program,
 };
 use clap::{Parser, Subcommand};
-use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_program::pubkey;
 use solana_sdk::{
     compute_budget::ComputeBudgetInstruction,
     instruction::Instruction,
-    message::v0::Message,
     pubkey::Pubkey,
     signature::Keypair,
     signer::{EncodableKey, Signer},
-    transaction::VersionedTransaction,
 };
 use squads_multisig::{
     client::MultisigCreateArgsV2,
@@ -90,7 +87,7 @@ impl From<&str> for ClapAddress {
 }
 
 async fn program_config_init(
-    rpc_client: &RpcClient,
+    program: &Program<Arc<Keypair>>,
     program_id: Pubkey,
     payer: &Keypair,
     priority_fee_lamports: Option<u64>,
@@ -98,40 +95,34 @@ async fn program_config_init(
     multisig_creation_fee: u64,
     treasury: Pubkey,
 ) -> Result<(), Box<dyn Error>> {
-    let blockhash = rpc_client.get_latest_blockhash().await?;
-
     let program_config = get_program_config_pda(Some(&program_id)).0;
 
-    let instructions = &[
-        ComputeBudgetInstruction::set_compute_unit_price(priority_fee_lamports.unwrap_or(5000)),
-        Instruction {
-            accounts: squads_multisig::squads_multisig_program::accounts::ProgramConfigInit {
-                program_config,
-                initializer: payer.pubkey(),
-                system_program: system_program::ID,
-            }
-            .to_account_metas(Some(false)),
-            data: squads_multisig::squads_multisig_program::instruction::ProgramConfigInit {
-                args: ProgramConfigInitArgs {
-                    authority: program_config_authority,
-                    multisig_creation_fee,
-                    treasury,
-                },
-            }
-            .data(),
-            program_id,
-        },
-    ];
+    let compute_budget_ix =
+        ComputeBudgetInstruction::set_compute_unit_price(priority_fee_lamports.unwrap_or(5000));
+    let ix = Instruction {
+        accounts: squads_multisig::squads_multisig_program::accounts::ProgramConfigInit {
+            program_config,
+            initializer: payer.pubkey(),
+            system_program: system_program::ID,
+        }
+        .to_account_metas(Some(false)),
+        data: squads_multisig::squads_multisig_program::instruction::ProgramConfigInit {
+            args: ProgramConfigInitArgs {
+                authority: program_config_authority,
+                multisig_creation_fee,
+                treasury,
+            },
+        }
+        .data(),
+        program_id,
+    };
 
-    let message = Message::try_compile(&payer.pubkey(), instructions, &[], blockhash)?;
-
-    let transaction = VersionedTransaction::try_new(
-        solana_sdk::message::VersionedMessage::V0(message),
-        &[&payer],
-    )?;
-
-    let signature = rpc_client
-        .send_and_confirm_transaction(&transaction)
+    let signature = program
+        .request()
+        .instruction(compute_budget_ix)
+        .instruction(ix)
+        .signer(payer)
+        .send()
         .await?;
 
     println!("Program config: {}", program_config);
@@ -246,9 +237,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             multisig_creation_fee,
             priority_fee_lamports,
         } => {
-            let rpc_client = RpcClient::new(cluster.url().to_string());
+            let client = Client::new(cluster, initializer_keypair.0.clone());
+            let program = client.program(program_id)?;
             program_config_init(
-                &rpc_client,
+                &program,
                 program_id,
                 &initializer_keypair.0,
                 priority_fee_lamports,
