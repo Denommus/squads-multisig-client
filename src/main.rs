@@ -71,9 +71,9 @@ pub enum Command {
         threshold: u16,
         #[arg(
             long,
-            help = "OPTIONAL, a pubkey to make the multisig address deterministic"
+            help = "OPTIONAL, a private key to make the multisig address deterministic"
         )]
-        multisig_pubkey: Option<ClapAddress>,
+        multisig_keypair: Option<ClapKeypair>,
         #[arg(
             long,
             help = "OPTIONAL, the lamports used to increase or decrease the priority of the transaction"
@@ -151,7 +151,7 @@ async fn program_config_init(
 async fn multisig_create(
     program: &Program<Arc<Keypair>>,
     program_id: Pubkey,
-    multisig_pubkey: Option<Pubkey>,
+    multisig_keypair: Option<Arc<Keypair>>,
     keypair: &Keypair,
     config_authority: Option<Pubkey>,
     rent_collector: Option<Pubkey>,
@@ -161,12 +161,9 @@ async fn multisig_create(
 ) -> Result<(), Box<dyn Error>> {
     let program_config_pda = get_program_config_pda(Some(&program_id)).0;
 
-    let multisig_pubkey = multisig_pubkey.unwrap_or_else(|| {
-        let keypair = Keypair::new();
-        keypair.pubkey()
-    });
+    let multisig_keypair = multisig_keypair.unwrap_or_else(|| Arc::new(Keypair::new()));
 
-    let multisig = get_multisig_pda(&multisig_pubkey, Some(&program_id)).0;
+    let multisig = get_multisig_pda(&multisig_keypair.pubkey(), Some(&program_id)).0;
 
     let compute_budget_ix =
         ComputeBudgetInstruction::set_compute_unit_price(priority_fee_lamports.unwrap_or(5000));
@@ -180,7 +177,7 @@ async fn multisig_create(
             program_config: program_config_pda,
             treasury,
             multisig,
-            create_key: multisig_pubkey,
+            create_key: multisig_keypair.pubkey(),
             creator: keypair.pubkey(),
             system_program: system_program::ID,
         },
@@ -200,6 +197,7 @@ async fn multisig_create(
         .instruction(compute_budget_ix)
         .instruction(ix)
         .signer(keypair)
+        .signer(&multisig_keypair)
         .send()
         .await?;
 
@@ -275,7 +273,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             rent_collector,
             members,
             threshold,
-            multisig_pubkey,
+            multisig_keypair,
             priority_fee_lamports,
         } => {
             let payer = keypair.0;
@@ -283,12 +281,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let program = client.program(program_id)?;
             let config_authority = config_authority.map(|x| x.0);
             let rent_collector = rent_collector.map(|x| x.0);
-            let multisig_pubkey = multisig_pubkey.map(|x| x.0);
+            let multisig_keypair = multisig_keypair.map(|x| x.0);
             let members = parse_members(members)?;
             multisig_create(
                 &program,
                 program_id,
-                multisig_pubkey,
+                multisig_keypair,
                 &payer,
                 config_authority,
                 rent_collector,
