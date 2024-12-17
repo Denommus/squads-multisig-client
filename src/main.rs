@@ -2,7 +2,7 @@ use std::{error::Error, str::FromStr, sync::Arc};
 
 use anchor_client::{
     anchor_lang::{system_program, InstructionData, ToAccountMetas},
-    Client, Cluster,
+    Client, Cluster, Program,
 };
 use clap::{Parser, Subcommand};
 use solana_client::nonblocking::rpc_client::RpcClient;
@@ -17,7 +17,10 @@ use solana_sdk::{
     transaction::VersionedTransaction,
 };
 use squads_multisig::{
-    pda::get_program_config_pda, squads_multisig_program::ProgramConfigInitArgs,
+    client::MultisigCreateArgsV2,
+    pda::{get_multisig_pda, get_program_config_pda},
+    squads_multisig_program::ProgramConfigInitArgs,
+    state::{Member, Permissions},
 };
 
 #[derive(Parser)]
@@ -57,6 +60,10 @@ pub enum Command {
         members: Vec<String>,
         #[arg(long)]
         threshold: u16,
+        #[arg(long)]
+        multisig_pubkey: Option<ClapAddress>,
+        #[arg(long)]
+        treasury: ClapAddress,
         #[arg(long)]
         priority_fee_lamports: Option<u64>,
     },
@@ -133,6 +140,90 @@ async fn program_config_init(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
+async fn multisig_create(
+    program: &Program<Arc<Keypair>>,
+    program_id: Pubkey,
+    treasury: Pubkey,
+    multisig_pubkey: Option<Pubkey>,
+    keypair: &Keypair,
+    config_authority: Option<Pubkey>,
+    rent_collector: Option<Pubkey>,
+    threshold: u16,
+    members: Vec<Member>,
+    priority_fee_lamports: Option<u64>,
+) -> Result<(), Box<dyn Error>> {
+    let program_config = get_program_config_pda(Some(&program_id)).0;
+
+    let multisig_pubkey = multisig_pubkey.unwrap_or_else(|| {
+        let keypair = Keypair::new();
+        keypair.pubkey()
+    });
+
+    let multisig = get_multisig_pda(&multisig_pubkey, Some(&program_id)).0;
+
+    let compute_budget_ix =
+        ComputeBudgetInstruction::set_compute_unit_price(priority_fee_lamports.unwrap_or(5000));
+
+    let ix = squads_multisig::client::multisig_create_v2(
+        squads_multisig::squads_multisig_program::accounts::MultisigCreateV2 {
+            program_config,
+            treasury,
+            multisig,
+            create_key: multisig_pubkey,
+            creator: keypair.pubkey(),
+            system_program: system_program::ID,
+        },
+        MultisigCreateArgsV2 {
+            config_authority,
+            threshold,
+            members,
+            memo: None,
+            time_lock: 0,
+            rent_collector,
+        },
+        Some(program_id),
+    );
+
+    let signature = program
+        .request()
+        .instruction(compute_budget_ix)
+        .instruction(ix)
+        .signer(keypair)
+        .send()
+        .await?;
+
+    println!("Multisig: {multisig}");
+    println!("Signature: {signature}");
+
+    Ok(())
+}
+
+fn parse_members(member_strings: Vec<String>) -> Result<Vec<Member>, String> {
+    member_strings
+        .into_iter()
+        .map(|s| {
+            let parts: Vec<&str> = s.split(',').collect();
+            if parts.len() != 2 {
+                return Err(
+                    "Each entry must be in the format <public_key>,<permission>".to_string()
+                );
+            }
+
+            let key =
+                Pubkey::from_str(parts[0]).map_err(|_| "Invalid public key format".to_string())?;
+            let permissions = parts[1]
+                .parse::<u8>()
+                .map_err(|_| "Invalid permission format".to_string())?;
+
+            Ok(Member {
+                key,
+                permissions: Permissions { mask: permissions },
+            })
+        })
+        .collect()
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let app = App::parse();
@@ -142,7 +233,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         None => Cluster::Localnet,
     };
 
-    let program_id = app
+    let program_id: Pubkey = app
         .program_id
         .map(|x| x.0)
         .unwrap_or(pubkey!("SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"));
@@ -173,11 +264,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
             rent_collector,
             members,
             threshold,
+            multisig_pubkey,
+            treasury,
             priority_fee_lamports,
         } => {
             let payer = keypair.0;
-            let client = Client::new(cluster, payer);
+            let client = Client::new(cluster, payer.clone());
             let program = client.program(program_id)?;
+            let config_authority = config_authority.map(|x| x.0);
+            let rent_collector = rent_collector.map(|x| x.0);
+            let multisig_pubkey = multisig_pubkey.map(|x| x.0);
+            let members = parse_members(members)?;
+            multisig_create(
+                &program,
+                program_id,
+                treasury.0,
+                multisig_pubkey,
+                &payer,
+                config_authority,
+                rent_collector,
+                threshold,
+                members,
+                priority_fee_lamports,
+            )
+            .await?;
         }
     }
     Ok(())
