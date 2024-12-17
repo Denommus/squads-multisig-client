@@ -16,7 +16,7 @@ use solana_sdk::{
 use squads_multisig::{
     client::MultisigCreateArgsV2,
     pda::{get_multisig_pda, get_program_config_pda},
-    squads_multisig_program::ProgramConfigInitArgs,
+    squads_multisig_program::{state::ProgramConfig, ProgramConfigInitArgs},
     state::{Member, Permissions},
 };
 
@@ -74,8 +74,6 @@ pub enum Command {
             help = "OPTIONAL, a pubkey to make the multisig address deterministic"
         )]
         multisig_pubkey: Option<ClapAddress>,
-        #[arg(long)]
-        treasury: ClapAddress,
         #[arg(
             long,
             help = "OPTIONAL, the lamports used to increase or decrease the priority of the transaction"
@@ -153,7 +151,6 @@ async fn program_config_init(
 async fn multisig_create(
     program: &Program<Arc<Keypair>>,
     program_id: Pubkey,
-    treasury: Pubkey,
     multisig_pubkey: Option<Pubkey>,
     keypair: &Keypair,
     config_authority: Option<Pubkey>,
@@ -162,7 +159,7 @@ async fn multisig_create(
     members: Vec<Member>,
     priority_fee_lamports: Option<u64>,
 ) -> Result<(), Box<dyn Error>> {
-    let program_config = get_program_config_pda(Some(&program_id)).0;
+    let program_config_pda = get_program_config_pda(Some(&program_id)).0;
 
     let multisig_pubkey = multisig_pubkey.unwrap_or_else(|| {
         let keypair = Keypair::new();
@@ -174,9 +171,13 @@ async fn multisig_create(
     let compute_budget_ix =
         ComputeBudgetInstruction::set_compute_unit_price(priority_fee_lamports.unwrap_or(5000));
 
+    let program_config: ProgramConfig = program.account(program_config_pda).await?;
+
+    let treasury = program_config.treasury;
+
     let ix = squads_multisig::client::multisig_create_v2(
         squads_multisig::squads_multisig_program::accounts::MultisigCreateV2 {
-            program_config,
+            program_config: program_config_pda,
             treasury,
             multisig,
             create_key: multisig_pubkey,
@@ -275,7 +276,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             members,
             threshold,
             multisig_pubkey,
-            treasury,
             priority_fee_lamports,
         } => {
             let payer = keypair.0;
@@ -288,7 +288,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             multisig_create(
                 &program,
                 program_id,
-                treasury.0,
                 multisig_pubkey,
                 &payer,
                 config_authority,
