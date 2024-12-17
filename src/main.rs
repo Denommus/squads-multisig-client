@@ -34,34 +34,52 @@ struct App {
 pub enum Command {
     #[command(about = "Initializes the program config")]
     ProgramConfigInit {
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Path to the private key responsible for signing the init transaction"
+        )]
         initializer_keypair: ClapKeypair,
-        #[arg(long)]
+        #[arg(long, help = "Pubkey of the key responsible for updating the config")]
         program_config_authority: ClapAddress,
-        #[arg(long)]
+        #[arg(long, help = "Pubkey of the treasury")]
         treasury: ClapAddress,
-        #[arg(long)]
+        #[arg(long, help = "Fee for creating a multisig account")]
         multisig_creation_fee: u64,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "OPTIONAL, the lamports used to increase or decrease the priority of the transaction"
+        )]
         priority_fee_lamports: Option<u64>,
     },
     #[command(about = "Creates a multisig account")]
     MultisigCreate {
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Path to the private key responsible for signing the multisig creation"
+        )]
         keypair: ClapKeypair,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "OPTIONAL, Pubkey of the key responsible for updating the config of the multisig"
+        )]
         config_authority: Option<ClapAddress>,
-        #[arg(long)]
+        #[arg(long, help = "OPTIONAL, Pubkey of the rent collector")]
         rent_collector: Option<ClapAddress>,
         #[arg(long, short, value_delimiter = ' ')]
         members: Vec<String>,
         #[arg(long)]
         threshold: u16,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "OPTIONAL, a pubkey to make the multisig address deterministic"
+        )]
         multisig_pubkey: Option<ClapAddress>,
         #[arg(long)]
         treasury: ClapAddress,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "OPTIONAL, the lamports used to increase or decrease the priority of the transaction"
+        )]
         priority_fee_lamports: Option<u64>,
     },
 }
