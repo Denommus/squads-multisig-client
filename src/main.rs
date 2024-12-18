@@ -1,6 +1,6 @@
 mod command;
 
-use std::error::Error;
+use std::{error::Error, str::FromStr};
 
 use anchor_client::Cluster;
 use clap::Parser;
@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app = App::parse();
 
     let cluster = match app.rpc_url {
-        Some(address) => Cluster::Custom(address.clone(), address),
+        Some(address) => Cluster::from_str(&address)?,
         None => Cluster::Localnet,
     };
 
