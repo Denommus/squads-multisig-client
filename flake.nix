@@ -30,6 +30,10 @@
 
         shell = pkgs.mkShell {
           inputsFrom = [ squads-multisig-client ];
+
+          packages = [
+            pkgs.cargo-machete
+          ];
         };
       in
       {

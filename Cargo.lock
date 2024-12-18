@@ -4694,10 +4694,8 @@ version = "0.1.0"
 dependencies = [
  "anchor-client",
  "clap 4.5.23",
- "solana-client",
  "solana-program",
  "solana-sdk",
- "solana-transaction-status",
  "squads-multisig",
  "tokio",
 ]
