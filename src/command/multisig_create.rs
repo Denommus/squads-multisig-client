@@ -1,6 +1,6 @@
 use std::{error::Error, str::FromStr, sync::Arc};
 
-use anchor_client::{Client, Cluster, Config, Program};
+use anchor_client::{Client, Cluster};
 use clap::Args;
 use solana_sdk::{
     compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, signature::Keypair, signer::Signer,
