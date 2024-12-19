@@ -13,10 +13,10 @@ use solana_sdk::pubkey::Pubkey;
 async fn main() -> Result<(), Box<dyn Error>> {
     let app = App::parse();
 
-    let cluster = match app.rpc_url {
-        Some(address) => Cluster::from_str(&address)?,
-        None => Cluster::Localnet,
-    };
+    let cluster = app
+        .rpc_url
+        .map(|address| Cluster::from_str(&address))
+        .unwrap_or(Ok(Cluster::Localnet))?;
 
     let program_id: Pubkey = app
         .program_id
