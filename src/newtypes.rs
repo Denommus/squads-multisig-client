@@ -18,9 +18,9 @@ impl FromStr for ClapKeypair {
 pub struct ClapAddress(pub Pubkey);
 
 impl FromStr for ClapAddress {
-    type Err = String;
+    type Err = <Pubkey as FromStr>::Err;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let pubkey = Pubkey::from_str(s).map_err(|e| format!("Error loading pubkey: {e}"))?;
+        let pubkey = Pubkey::from_str(s)?;
         Ok(Self(pubkey))
     }
 }
