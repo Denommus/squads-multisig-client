@@ -29,19 +29,22 @@ pub enum Command {
 #[derive(Clone)]
 pub struct ClapKeypair(pub Arc<Keypair>);
 
-impl From<&str> for ClapKeypair {
-    fn from(value: &str) -> Self {
-        let keypair = Keypair::read_from_file(value).unwrap();
-        Self(Arc::new(keypair))
+impl FromStr for ClapKeypair {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let keypair =
+            Keypair::read_from_file(s).map_err(|e| format!("Error loading keypair: {e}"))?;
+        Ok(Self(Arc::new(keypair)))
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ClapAddress(pub Pubkey);
 
-impl From<&str> for ClapAddress {
-    fn from(value: &str) -> Self {
-        let pubkey = Pubkey::from_str(value).unwrap();
-        Self(pubkey)
+impl FromStr for ClapAddress {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let pubkey = Pubkey::from_str(s).map_err(|e| format!("Error loading pubkey: {e}"))?;
+        Ok(Self(pubkey))
     }
 }
