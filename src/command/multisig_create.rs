@@ -13,7 +13,7 @@ use squads_multisig::{
     state::{Member, Permissions},
 };
 
-use super::{ClapAddress, ClapKeypair};
+use crate::newtypes::{ClapAddress, ClapKeypair};
 
 #[derive(Args)]
 pub struct MultisigCreate {

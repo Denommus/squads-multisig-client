@@ -1,4 +1,5 @@
 mod command;
+mod newtypes;
 
 use std::{error::Error, str::FromStr};
 

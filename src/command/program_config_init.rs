@@ -13,7 +13,7 @@ use squads_multisig::{
     pda::get_program_config_pda, squads_multisig_program::ProgramConfigInitArgs,
 };
 
-use super::{ClapAddress, ClapKeypair};
+use crate::newtypes::{ClapAddress, ClapKeypair};
 
 #[derive(Args)]
 pub struct ProgramConfigInit {
