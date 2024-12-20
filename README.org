@@ -17,8 +17,14 @@ maybe with =solana-keygen=), you can execute
 
 #+begin_src sh
   cargo build --release
+  ./target/release/solana-multisig-client --help
   ./taget/release/solana-multisig-client multisig-create --help
 #+end_src
 
 And follow the instructions to pass the correct private key paths or
 pubkeys to the account creation script.
+
+You also need to pass the correct program id and rpc url to the
+program, as instructed per =--help=. In Eclipse, the program id is
+=eSQDSMLf3qxwHVHeTr9amVAGmZbRLY2rFdSURandt6f=, and the rpc url is
+~https://mainnetbeta-rpc.eclipse.xyz~
