@@ -16,7 +16,8 @@ After you have created all the required keys (maybe with a wallet,
 maybe with =solana-keygen=), you can execute
 
 #+begin_src sh
-  solana-multisig-client multisig-create --help
+  cargo build --release
+  ./taget/release/solana-multisig-client multisig-create --help
 #+end_src
 
 And follow the instructions to pass the correct private key paths or
