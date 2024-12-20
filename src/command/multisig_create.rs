@@ -26,6 +26,7 @@ pub struct MultisigCreate {
     /// "OPTIONAL, Pubkey of the rent collector"
     #[arg(long)]
     rent_collector: Option<ClapAddress>,
+    /// List of members. Each member needs to have a pubkey and a permission mask, separated by comma (e.g. <pubkey>,<mask>)
     #[arg(long, short, value_delimiter = ' ')]
     members: Vec<String>,
     #[arg(long)]

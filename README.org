@@ -1,0 +1,23 @@
+* Creating a multisig account in Eclipse
+
+You're REQUIRED to create the following keys:
+
+- =keypair= (used to create the multisig account itself)
+- =members= (the keys that are going to sign the multisig transaction)
+
+The following keys are OPTIONAL:
+- =config-authority= (if you want to update the config of the multisig
+  later on, this key is required)
+- =rent-collector=
+- =multisig-keypair= (a private key used to make the address of the
+  multisig account deterministic)
+
+After you have created all the required keys (maybe with a wallet,
+maybe with =solana-keygen=), you can execute
+
+#+begin_src sh
+  solana-multisig-client multisig-create --help
+#+end_src
+
+And follow the instructions to pass the correct private key paths or
+pubkeys to the account creation script.
