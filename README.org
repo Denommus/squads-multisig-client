@@ -5,6 +5,8 @@ You're REQUIRED to create the following keys:
 - =keypair= (used to create the multisig account itself)
 - =members= (the keys that are going to sign the multisig transaction)
 
+The =keypair= key needs to have funds.
+
 The following keys are OPTIONAL:
 - =config-authority= (if you want to update the config of the multisig
   later on, this key is required)
