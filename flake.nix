@@ -35,6 +35,10 @@
             pkgs.cargo-machete
           ];
         };
+
+        overlay = (final: prev: {
+          inherit squads-multisig-client;
+        });
       in
       {
         packages = {
@@ -43,6 +47,8 @@
         };
 
         devShells.default = shell;
+
+        overlays.default = overlay;
       }
     );
 }
